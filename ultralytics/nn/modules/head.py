@@ -278,6 +278,66 @@ class Pose(Detect):
             y[:, 1::ndim] = (y[:, 1::ndim] * 2.0 + (self.anchors[1] - 0.5)) * self.strides
             return y
 
+class SegPose(Detect):
+    """YOLO Segment head for segmentation models."""
+
+    def __init__(self, nc=80, nm=32, npr=256, kpt_shape=(17, 3), ch=()):
+        """Initialize the YOLO model attributes such as the number of masks, prototypes, and the convolution layers."""
+        super().__init__(nc, ch)
+        self.nm = nm  # number of masks
+        self.npr = npr  # number of protos
+        self.proto = Proto(ch[0], self.npr, self.nm)  # protos
+        self.kpt_shape = kpt_shape  # number of keypoints, number of dims (2 for x,y or 3 for x,y,visible)
+        self.nk = kpt_shape[0] * kpt_shape[1]  # number of keypoints total
+
+        c4_seg = max(ch[0] // 4, self.nm)
+        self.cv4_seg = nn.ModuleList(nn.Sequential(Conv(x, c4_seg, 3), Conv(c4_seg, c4_seg, 3), nn.Conv2d(c4_seg, self.nm, 1)) for x in ch)
+
+        c4_pose = max(ch[0] // 4, self.nk)
+        self.cv4_pose = nn.ModuleList(nn.Sequential(Conv(x, c4_pose, 3), Conv(c4_pose, c4_pose, 3), nn.Conv2d(c4_pose, self.nk, 1)) for x in ch)
+
+    def forward(self, x):
+        """Return model outputs and mask coefficients if training, otherwise return outputs and mask coefficients."""
+        p = self.proto(x[0])  # mask protos
+        bs = p.shape[0]  # batch size
+
+        mc = torch.cat([self.cv4_seg[i](x[i]).view(bs, self.nm, -1) for i in range(self.nl)], 2)  # mask coefficients
+        kpt = torch.cat([self.cv4_pose[i](x[i]).view(bs, self.nk, -1) for i in range(self.nl)], -1)  # (bs, 17*3, h*w)
+        x = Detect.forward(self, x)
+        if self.training:
+            return x, mc, p, kpt
+
+        pred_kpt = self.kpts_decode(bs, kpt)
+        return (torch.cat([x, mc, pred_kpt], 1), p) if self.export else (torch.cat([x[0], mc, pred_kpt], 1), (x[1], mc, p, kpt))
+
+    def kpts_decode(self, bs, kpts):
+        """Decodes keypoints."""
+        ndim = self.kpt_shape[1]
+        if self.export:
+            if self.format in {
+                "tflite",
+                "edgetpu",
+            }:  # required for TFLite export to avoid 'PLACEHOLDER_FOR_GREATER_OP_CODES' bug
+                # Precompute normalization factor to increase numerical stability
+                y = kpts.view(bs, *self.kpt_shape, -1)
+                grid_h, grid_w = self.shape[2], self.shape[3]
+                grid_size = torch.tensor([grid_w, grid_h], device=y.device).reshape(1, 2, 1)
+                norm = self.strides / (self.stride[0] * grid_size)
+                a = (y[:, :, :2] * 2.0 + (self.anchors - 0.5)) * norm
+            else:
+                # NCNN fix
+                y = kpts.view(bs, *self.kpt_shape, -1)
+                a = (y[:, :, :2] * 2.0 + (self.anchors - 0.5)) * self.strides
+            if ndim == 3:
+                a = torch.cat((a, y[:, :, 2:3].sigmoid()), 2)
+            return a.view(bs, self.nk, -1)
+        else:
+            y = kpts.clone()
+            if ndim == 3:
+                y[:, 2::3] = y[:, 2::3].sigmoid()  # sigmoid (WARNING: inplace .sigmoid_() Apple MPS bug)
+            y[:, 0::ndim] = (y[:, 0::ndim] * 2.0 + (self.anchors[0] - 0.5)) * self.strides
+            y[:, 1::ndim] = (y[:, 1::ndim] * 2.0 + (self.anchors[1] - 0.5)) * self.strides
+            return y
 
 class Classify(nn.Module):
     """YOLO classification head, i.e. x(b,c1,20,20) to x(b,c2)."""
