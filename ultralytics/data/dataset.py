@@ -36,6 +36,7 @@ from .utils import (
     save_dataset_cache_file,
     verify_image,
     verify_image_label,
+    verify_image_label_segment_pose
 )
 
 # Ultralytics dataset *.cache version, >= 1.0.0 for YOLOv8
@@ -85,18 +86,32 @@ class YOLODataset(BaseDataset):
                 "keypoints, number of dims (2 for x,y or 3 for x,y,visible)], i.e. 'kpt_shape: [17, 3]'"
             )
         with ThreadPool(NUM_THREADS) as pool:
-            results = pool.imap(
-                func=verify_image_label,
-                iterable=zip(
-                    self.im_files,
-                    self.label_files,
-                    repeat(self.prefix),
-                    repeat(self.use_keypoints),
-                    repeat(len(self.data["names"])),
-                    repeat(nkpt),
-                    repeat(ndim),
-                ),
-            )
+            if not self.use_segments:
+                results = pool.imap(
+                    func=verify_image_label,
+                    iterable=zip(
+                        self.im_files,
+                        self.label_files,
+                        repeat(self.prefix),
+                        repeat(self.use_keypoints),
+                        repeat(len(self.data["names"])),
+                        repeat(nkpt),
+                        repeat(ndim),
+                    ),
+                )
+            else:
+                results = pool.imap(
+                    func=verify_image_label_segment_pose,
+                    iterable=zip(
+                        self.im_files,
+                        self.label_files,
+                        repeat(self.prefix),
+                        repeat(self.use_keypoints),
+                        repeat(len(self.data["names"])),
+                        repeat(nkpt),
+                        repeat(ndim),
+                    ),
+                )
             pbar = TQDM(results, desc=desc, total=total)
             for im_file, lb, shape, segments, keypoint, nm_f, nf_f, ne_f, nc_f, msg in pbar:
                 nm += nm_f
