@@ -59,6 +59,7 @@ class YOLODataset(BaseDataset):
         self.use_segments = task == "segment"
         self.use_keypoints = task == "pose"
         self.use_obb = task == "obb"
+        self.use_segments_keypoints = task == "segpose"
         self.data = data
         assert not (self.use_segments and self.use_keypoints), "Can not use both segments and keypoints."
         super().__init__(*args, **kwargs)
@@ -78,7 +79,7 @@ class YOLODataset(BaseDataset):
         desc = f"{self.prefix}Scanning {path.parent / path.stem}..."
         total = len(self.im_files)
         nkpt, ndim = self.data.get("kpt_shape", (0, 0))
-        if self.use_keypoints and (nkpt <= 0 or ndim not in {2, 3}):
+        if (self.use_keypoints or self.use_segments_keypoints) and (nkpt <= 0 or ndim not in {2, 3}):
             raise ValueError(
                 "'kpt_shape' in data.yaml missing or incorrect. Should be a list with [number of "
                 "keypoints, number of dims (2 for x,y or 3 for x,y,visible)], i.e. 'kpt_shape: [17, 3]'"
@@ -94,6 +95,7 @@ class YOLODataset(BaseDataset):
                     repeat(len(self.data["names"])),
                     repeat(nkpt),
                     repeat(ndim),
+                    repeat(self.use_segments_keypoints)
                 ),
             )
             pbar = TQDM(results, desc=desc, total=total)
@@ -183,8 +185,8 @@ class YOLODataset(BaseDataset):
             Format(
                 bbox_format="xywh",
                 normalize=True,
-                return_mask=self.use_segments,
-                return_keypoint=self.use_keypoints,
+                return_mask=(self.use_segments or self.use_segments_keypoints),
+                return_keypoint=(self.use_keypoints or self.use_segments_keypoints),
                 return_obb=self.use_obb,
                 batch_idx=True,
                 mask_ratio=hyp.mask_ratio,
