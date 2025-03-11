@@ -15,7 +15,7 @@ from .conv import Conv, DWConv
 from .transformer import MLP, DeformableTransformerDecoder, DeformableTransformerDecoderLayer
 from .utils import bias_init_with_prob, linear_init
 
-__all__ = "Detect", "Segment", "Pose", "Classify", "OBB", "RTDETRDecoder", "v10Detect"
+__all__ = "Detect", "Segment", "Pose", "Classify", "OBB", "RTDETRDecoder", "v10Detect", "SegPose"
 
 
 class Detect(nn.Module):
@@ -279,7 +279,7 @@ class Pose(Detect):
             return y
 
 class SegPose(Detect):
-    """YOLO Segment head for segmentation models."""
+    """YOLO SegPose head for segmentation-pose models."""
 
     def __init__(self, nc=80, nm=32, npr=256, kpt_shape=(17, 3), ch=()):
         """Initialize the YOLO model attributes such as the number of masks, prototypes, and the convolution layers."""
