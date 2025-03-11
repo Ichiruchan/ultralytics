@@ -95,7 +95,6 @@ class YOLODataset(BaseDataset):
                     repeat(len(self.data["names"])),
                     repeat(nkpt),
                     repeat(ndim),
-                    repeat(self.use_segments_keypoints)
                 ),
             )
             pbar = TQDM(results, desc=desc, total=total)
