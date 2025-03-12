@@ -413,7 +413,7 @@ class Exporter:
         }  # model metadata
         if dla is not None:
             self.metadata["dla"] = dla  # make sure `AutoBackend` uses correct dla device if it has one
-        if model.task == "pose":
+        if model.task == "pose" or model.task == "segpose":
             self.metadata["kpt_shape"] = model.model[-1].kpt_shape
 
         LOGGER.info(
