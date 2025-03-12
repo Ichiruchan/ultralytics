@@ -86,7 +86,7 @@ class YOLODataset(BaseDataset):
                 "keypoints, number of dims (2 for x,y or 3 for x,y,visible)], i.e. 'kpt_shape: [17, 3]'"
             )
         with ThreadPool(NUM_THREADS) as pool:
-            if not self.use_segments:
+            if not self.use_segments_keypoints:
                 results = pool.imap(
                     func=verify_image_label,
                     iterable=zip(

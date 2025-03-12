@@ -193,7 +193,7 @@ def verify_image_label_segment_pose(args):
                     assert len(line) >= (1 + 6 + nkpt * ndim), f"labels require {(7 + nkpt * ndim)} columns each"
                 classes = np.array([x[0] for x in lb], dtype=np.float32)
                 segments = [np.array(x[1:- nkpt * ndim], dtype=np.float32).reshape(-1, 2) for x in lb]  # (cls, xy1...)
-                keypoints = np.array([x[:- nkpt * ndim]for x in lb], dtype=np.float32).reshape(-1, nkpt, ndim)
+                keypoints = np.array([x[- nkpt * ndim:]for x in lb], dtype=np.float32).reshape(-1, nkpt, ndim)
                 # todo check all coordinates
                 if ndim == 2:
                     kpt_mask = np.where((keypoints[..., 0] < 0) | (keypoints[..., 1] < 0), 0.0, 1.0).astype(np.float32)
