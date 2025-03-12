@@ -189,19 +189,20 @@ def verify_image_label_segment_pose(args):
             nf = 1  # label found
             with open(lb_file) as f:
                 lb = [x.split() for x in f.read().strip().splitlines() if len(x)]
+                for line in lb:
+                    assert len(line) >= (1 + 6 + nkpt * ndim), f"labels require {(7 + nkpt * ndim)} columns each"
                 classes = np.array([x[0] for x in lb], dtype=np.float32)
                 segments = [np.array(x[1:- nkpt * ndim], dtype=np.float32).reshape(-1, 2) for x in lb]  # (cls, xy1...)
-                points = [np.array(x[:- nkpt * ndim], dtype=np.float32).reshape(nkpt, ndim) for x in lb]
+                keypoints = np.array([x[:- nkpt * ndim]for x in lb], dtype=np.float32).reshape(-1, nkpt, ndim)
+                # todo check all coordinates
+                if ndim == 2:
+                    kpt_mask = np.where((keypoints[..., 0] < 0) | (keypoints[..., 1] < 0), 0.0, 1.0).astype(np.float32)
+                    keypoints = np.concatenate([keypoints, kpt_mask[..., None]], axis=-1)  # (nl, nkpt, 3)
                 lb = np.concatenate((classes.reshape(-1, 1), segments2boxes(segments)), 1)
                 lb = np.array(lb, dtype=np.float32)
         else:
             nm = 1  # label missing
-            lb = np.zeros((0, (5 + nkpt * ndim) if keypoints else 5), dtype=np.float32)
-        if keypoint:
-            keypoints = lb[:, 5:].reshape(-1, nkpt, ndim)
-            if ndim == 2:
-                kpt_mask = np.where((keypoints[..., 0] < 0) | (keypoints[..., 1] < 0), 0.0, 1.0).astype(np.float32)
-                keypoints = np.concatenate([keypoints, kpt_mask[..., None]], axis=-1)  # (nl, nkpt, 3)
+            lb = np.zeros((0, 7 + nkpt * ndim), dtype=np.float32)
         lb = lb[:, :5]
         return im_file, lb, shape, segments, keypoints, nm, nf, ne, nc, msg
     except Exception as e:
