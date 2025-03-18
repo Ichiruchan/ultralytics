@@ -296,7 +296,7 @@ class SegPoseValidator(DetectionValidator):
 
     def plot_predictions(self, batch, preds, ni):
         """Plots batch predictions with masks and bounding boxes."""
-        pred_kpts = torch.cat([p[:, -self.kpt_shape[0] * -self.kpt_shape[1]:].view(-1, *self.kpt_shape) for p in preds], 0)
+        pred_kpts = torch.cat([p[:, -self.kpt_shape[0] * self.kpt_shape[1]:].view(-1, *self.kpt_shape)[:15] for p in preds[0]], 0)
         plot_images(
             batch["img"],
             *output_to_target(preds[0], max_det=15),  # not set to self.args.max_det due to slow plotting speed

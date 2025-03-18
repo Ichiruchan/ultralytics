@@ -43,6 +43,11 @@ class SegPoseTrainer(yolo.detect.DetectionTrainer):
 
         return model
 
+    def set_model_attributes(self):
+        """Sets keypoints shape attribute of PoseModel."""
+        super().set_model_attributes()
+        self.model.kpt_shape = self.data["kpt_shape"]
+
     def get_validator(self):
         """Return an instance of SegmentationValidator for validation of YOLO model."""
         self.loss_names = "box_loss", "seg_loss", "cls_loss", "dfl_loss", "pose_loss", "kobj_loss"
