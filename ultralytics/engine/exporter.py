@@ -1389,7 +1389,7 @@ class Exporter:
         output1.name = "output"
         output1.description = "Coordinates of detected objects, class labels, and confidence score"
         output1.associatedFiles = [label_file]
-        if self.model.task == "segment":
+        if self.model.task == "segment" or self.model.task == "segpose":
             output2 = schema.TensorMetadataT()
             output2.name = "output"
             output2.description = "Mask protos"
@@ -1398,7 +1398,7 @@ class Exporter:
         # Create subgraph info
         subgraph = schema.SubGraphMetadataT()
         subgraph.inputTensorMetadata = [input_meta]
-        subgraph.outputTensorMetadata = [output1, output2] if self.model.task == "segment" else [output1]
+        subgraph.outputTensorMetadata = [output1, output2] if self.model.task == "segment" or self.model.task == "segpose" else [output1]
         model_meta.subgraphMetadata = [subgraph]
 
         b = flatbuffers.Builder(0)
